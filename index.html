@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>משחק חללית נגד חייזרים</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background:
+        radial-gradient(circle at top, #1a2450 0%, #090d1f 45%, #03050d 100%);
+      overflow: hidden;
+      color: white;
+    }
+
+    #gameWrapper {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    #gameContainer {
+      width: 480px;
+      height: 720px;
+      position: relative;
+      overflow: hidden;
+      border: 3px solid #5fd3ff;
+      border-radius: 16px;
+      background:
+        linear-gradient(to bottom, rgba(10,15,40,0.95), rgba(0,0,0,0.95));
+      box-shadow: 0 0 30px rgba(95, 211, 255, 0.35);
+    }
+
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: white;
+      opacity: 0.8;
+      border-radius: 50%;
+      animation: twinkle 1.6s infinite alternate;
+    }
+
+    @keyframes twinkle {
+      from { opacity: 0.2; transform: scale(1); }
+      to { opacity: 1; transform: scale(1.6); }
+    }
+
+    #hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0));
+      pointer-events: none;
+      font-size: 20px;
+      font-weight: bold;
+      text-shadow: 0 0 10px rgba(0,0,0,0.7);
+    }
+
+    #player {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      bottom: 20px;
+      left: 205px;
+      background-image: url("https://static.vecteezy.com/system/resources/thumbnails/043/558/215/small/spaceship-rocket-on-isolated-transparent-background-png.png");
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 10;
+      filter: drop-shadow(0 0 10px rgba(95, 211, 255, 0.8));
+    }
+
+    .bullet {
+      position: absolute;
+      width: 8px;
+      height: 22px;
+      border-radius: 8px;
+      background: linear-gradient(to top, #ff7b00, #fff176, #ffffff);
+      box-shadow: 0 0 12px #ffcc66, 0 0 20px #ff7b00;
+      z-index: 9;
+    }
+
+    .alien {
+      position: absolute;
+      width: 56px;
+      height: 56px;
+      background-image: url("https://www.giraffa360.co.il/files/products/product659_image2_2021-06-30_18-23-37.webp");
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 8;
+      filter: drop-shadow(0 0 8px rgba(255, 0, 120, 0.45));
+    }
+
+    .explosion {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      background-image: url("https://waryhub.com/files/preview/800x800/21722833807dxwxdlmlvt1sbbaagxzyozxxqhgwlpk8yyxjnush76aovwdcqcctgfzzbjfcwdyigdudkcv9sud4ljpzbu1tgj93ihkubz00m3i5.png");
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      pointer-events: none;
+      z-index: 15;
+      animation: boom 0.35s linear forwards;
+    }
+
+    @keyframes boom {
+      0% { transform: scale(0.4); opacity: 1; }
+      100% { transform: scale(1.5); opacity: 0; }
+    }
+
+    #startScreen,
+    #gameOverScreen {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.7);
+      text-align: center;
+      padding: 20px;
+    }
+
+    #gameOverScreen {
+      display: none;
+    }
+
+    .title {
+      font-size: 42px;
+      margin-bottom: 16px;
+      color: #8de8ff;
+      text-shadow: 0 0 18px rgba(95, 211, 255, 0.7);
+    }
+
+    .subtitle {
+      font-size: 20px;
+      margin-bottom: 18px;
+      line-height: 1.6;
+      max-width: 360px;
+    }
+
+    .btn {
+      border: none;
+      padding: 14px 28px;
+      font-size: 20px;
+      font-weight: bold;
+      border-radius: 12px;
+      cursor: pointer;
+      color: white;
+      background: linear-gradient(135deg, #00a8ff, #6c5ce7);
+      box-shadow: 0 0 18px rgba(0, 168, 255, 0.35);
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    #controlsHint {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      opacity: 0.8;
+      z-index: 30;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 8px 14px;
+      border-radius: 999px;
+    }
+
+    .touchBtn {
+      position: absolute;
+      bottom: 20px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.08);
+      color: white;
+      font-size: 28px;
+      z-index: 40;
+      user-select: none;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #leftBtn { left: 16px; }
+    #rightBtn { right: 16px; }
+
+    @media (max-width: 560px) {
+      #gameContainer {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        border: none;
+      }
+
+      .touchBtn {
+        display: flex;
+      }
+
+      #controlsHint {
+        bottom: 95px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="gameWrapper">
+    <div id="gameContainer">
+      <div id="hud">
+        <div>ניקוד: <span id="score">0</span></div>
+        <div>חיים: <span id="lives">3</span></div>
+      </div>
+
+      <div id="player"></div>
+
+      <div id="startScreen">
+        <div class="title">חללית נגד חייזרים</div>
+        <div class="subtitle">
+          הזז את החללית ימינה ושמאלה, ירה בחייזרים לפני שהם מגיעים למטה.
+        </div>
+        <button class="btn" id="startBtn">התחל משחק</button>
+      </div>
+
+      <div id="gameOverScreen">
+        <div class="title">המשחק נגמר</div>
+        <div class="subtitle">הניקוד שלך: <span id="finalScore">0</span></div>
+        <button class="btn" id="restartBtn">שחק שוב</button>
+      </div>
+
+      <div id="controlsHint">מקלדת: ← → ורווח</div>
+
+      <div class="touchBtn" id="leftBtn">◀</div>
+      <div class="touchBtn" id="rightBtn">▶</div>
+    </div>
+  </div>
+
+  <script>
+    const gameContainer = document.getElementById("gameContainer");
+    const player = document.getElementById("player");
+    const scoreEl = document.getElementById("score");
+    const livesEl = document.getElementById("lives");
+    const startScreen = document.getElementById("startScreen");
+    const gameOverScreen = document.getElementById("gameOverScreen");
+    const finalScoreEl = document.getElementById("finalScore");
+    const startBtn = document.getElementById("startBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const leftBtn = document.getElementById("leftBtn");
+    const rightBtn = document.getElementById("rightBtn");
+
+    const GAME_WIDTH = 480;
+    const GAME_HEIGHT = 720;
+    const PLAYER_WIDTH = 70;
+    const PLAYER_HEIGHT = 70;
+    const ALIEN_SIZE = 56;
+    const BULLET_WIDTH = 8;
+    const BULLET_HEIGHT = 22;
+
+    let playerX = 205;
+    let score = 0;
+    let lives = 3;
+    let bullets = [];
+    let aliens = [];
+    let explosions = [];
+
+    let gameRunning = false;
+    let animationId = null;
+    let keys = {
+      left: false,
+      right: false,
+      shoot: false
+    };
+
+    let lastTime = 0;
+    let lastShotTime = 0;
+    let lastAlienSpawn = 0;
+    let alienSpawnInterval = 850;
+    let moveSpeed = 7;
+    let bulletSpeed = 9;
+    let alienBaseSpeed = 2.2;
+
+    function createStars() {
+      for (let i = 0; i < 70; i++) {
+        const star = document.createElement("div");
+        star.className = "star";
+        star.style.left = Math.random() * GAME_WIDTH + "px";
+        star.style.top = Math.random() * GAME_HEIGHT + "px";
+        star.style.animationDelay = (Math.random() * 1.6) + "s";
+        star.style.opacity = (Math.random() * 0.8 + 0.2).toFixed(2);
+        gameContainer.appendChild(star);
+      }
+    }
+
+    createStars();
+
+    function updateHUD() {
+      scoreEl.textContent = score;
+      livesEl.textContent = lives;
+    }
+
+    function updatePlayerPosition() {
+      player.style.left = playerX + "px";
+    }
+
+    function startGame() {
+      score = 0;
+      lives = 3;
+      bullets.forEach(b => b.el.remove());
+      aliens.forEach(a => a.el.remove());
+      explosions.forEach(e => e.el.remove());
+
+      bullets = [];
+      aliens = [];
+      explosions = [];
+
+      playerX = (GAME_WIDTH - PLAYER_WIDTH) / 2;
+      updatePlayerPosition();
+      updateHUD();
+
+      gameRunning = true;
+      startScreen.style.display = "none";
+      gameOverScreen.style.display = "none";
+
+      lastTime = performance.now();
+      lastShotTime = 0;
+      lastAlienSpawn = 0;
+      alienSpawnInterval = 850;
+      alienBaseSpeed = 2.2;
+
+      if (animationId) cancelAnimationFrame(animationId);
+      animationId = requestAnimationFrame(gameLoop);
+    }
+
+    function endGame() {
+      gameRunning = false;
+      finalScoreEl.textContent = score;
+      gameOverScreen.style.display = "flex";
+      if (animationId) cancelAnimationFrame(animationId);
+    }
+
+    function shoot() {
+      const now = performance.now();
+      if (now - lastShotTime < 220) return;
+      lastShotTime = now;
+
+      const bullet = document.createElement("div");
+      bullet.className = "bullet";
+      const bulletX = playerX + PLAYER_WIDTH / 2 - BULLET_WIDTH / 2;
+      const bulletY = GAME_HEIGHT - PLAYER_HEIGHT - 28;
+
+      bullet.style.left = bulletX + "px";
+      bullet.style.top = bulletY + "px";
+      gameContainer.appendChild(bullet);
+
+      bullets.push({
+        x: bulletX,
+        y: bulletY,
+        width: BULLET_WIDTH,
+        height: BULLET_HEIGHT,
+        el: bullet
+      });
+    }
+
+    function spawnAlien() {
+      const alien = document.createElement("div");
+      alien.className = "alien";
+
+      const x = Math.random() * (GAME_WIDTH - ALIEN_SIZE);
+      const speed = alienBaseSpeed + Math.random() * 1.5;
+
+      alien.style.left = x + "px";
+      alien.style.top = "-60px";
+      gameContainer.appendChild(alien);
+
+      aliens.push({
+        x,
+        y: -60,
+        width: ALIEN_SIZE,
+        height: ALIEN_SIZE,
+        speed,
+        el: alien
+      });
+    }
+
+    function createExplosion(x, y) {
+      const explosion = document.createElement("div");
+      explosion.className = "explosion";
+      explosion.style.left = x + "px";
+      explosion.style.top = y + "px";
+      gameContainer.appendChild(explosion);
+
+      const expObj = { el: explosion };
+      explosions.push(expObj);
+
+      setTimeout(() => {
+        explosion.remove();
+        explosions = explosions.filter(e => e !== expObj);
+      }, 350);
+    }
+
+    function rectsCollide(a, b) {
+      return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+      );
+    }
+
+    function updatePlayer() {
+      if (keys.left) {
+        playerX -= moveSpeed;
+      }
+      if (keys.right) {
+        playerX += moveSpeed;
+      }
+
+      playerX = Math.max(0, Math.min(GAME_WIDTH - PLAYER_WIDTH, playerX));
+      updatePlayerPosition();
+
+      if (keys.shoot) {
+        shoot();
+      }
+    }
+
+    function updateBullets() {
+      bullets.forEach((bullet, index) => {
+        bullet.y -= bulletSpeed;
+        bullet.el.style.top = bullet.y + "px";
+
+        if (bullet.y < -30) {
+          bullet.el.remove();
+          bullets.splice(index, 1);
+        }
+      });
+    }
+
+    function updateAliens() {
+      aliens.forEach((alien, index) => {
+        alien.y += alien.speed;
+        alien.el.style.top = alien.y + "px";
+
+        if (alien.y > GAME_HEIGHT) {
+          alien.el.remove();
+          aliens.splice(index, 1);
+          lives--;
+          updateHUD();
+
+          if (lives <= 0) {
+            endGame();
+          }
+        }
+      });
+    }
+
+    function handleCollisions() {
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        for (let j = aliens.length - 1; j >= 0; j--) {
+          if (rectsCollide(bullets[i], aliens[j])) {
+            createExplosion(aliens[j].x, aliens[j].y);
+
+            bullets[i].el.remove();
+            aliens[j].el.remove();
+
+            bullets.splice(i, 1);
+            aliens.splice(j, 1);
+
+            score += 10;
+            updateHUD();
+
+            if (score > 0 && score % 100 === 0) {
+              alienBaseSpeed += 0.25;
+              alienSpawnInterval = Math.max(280, alienSpawnInterval - 40);
+            }
+
+            break;
+          }
+        }
+      }
+
+      const playerRect = {
+        x: playerX,
+        y: GAME_HEIGHT - PLAYER_HEIGHT - 20,
+        width: PLAYER_WIDTH,
+        height: PLAYER_HEIGHT
+      };
+
+      for (let i = aliens.length - 1; i >= 0; i--) {
+        if (rectsCollide(playerRect, aliens[i])) {
+          createExplosion(playerX, GAME_HEIGHT - PLAYER_HEIGHT - 20);
+          createExplosion(aliens[i].x, aliens[i].y);
+
+          aliens[i].el.remove();
+          aliens.splice(i, 1);
+
+          lives--;
+          updateHUD();
+
+          if (lives <= 0) {
+            endGame();
+            return;
+          }
+        }
+      }
+    }
+
+    function gameLoop(timestamp) {
+      if (!gameRunning) return;
+
+      const delta = timestamp - lastTime;
+      lastTime = timestamp;
+
+      updatePlayer();
+      updateBullets();
+      updateAliens();
+      handleCollisions();
+
+      if (timestamp - lastAlienSpawn > alienSpawnInterval) {
+        spawnAlien();
+        lastAlienSpawn = timestamp;
+      }
+
+      animationId = requestAnimationFrame(gameLoop);
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "ArrowLeft") keys.left = true;
+      if (e.code === "ArrowRight") keys.right = true;
+      if (e.code === "Space") {
+        e.preventDefault();
+        keys.shoot = true;
+      }
+    });
+
+    document.addEventListener("keyup", (e) => {
+      if (e.code === "ArrowLeft") keys.left = false;
+      if (e.code === "ArrowRight") keys.right = false;
+      if (e.code === "Space") keys.shoot = false;
+    });
+
+    function bindTouch(button, keyName) {
+      const press = (e) => {
+        e.preventDefault();
+        keys[keyName] = true;
+      };
+
+      const release = (e) => {
+        e.preventDefault();
+        keys[keyName] = false;
+      };
+
+      button.addEventListener("touchstart", press, { passive: false });
+      button.addEventListener("touchend", release, { passive: false });
+      button.addEventListener("touchcancel", release, { passive: false });
+
+      button.addEventListener("mousedown", press);
+      button.addEventListener("mouseup", release);
+      button.addEventListener("mouseleave", release);
+    }
+
+    bindTouch(leftBtn, "left");
+    bindTouch(rightBtn, "right");
+
+    gameContainer.addEventListener("click", (e) => {
+      if (!gameRunning) return;
+      const rect = gameContainer.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+
+      if (clickX < rect.width / 2) {
+        playerX -= 35;
+      } else {
+        playerX += 35;
+      }
+
+      playerX = Math.max(0, Math.min(GAME_WIDTH - PLAYER_WIDTH, playerX));
+      updatePlayerPosition();
+      shoot();
+    });
+
+    startBtn.addEventListener("click", startGame);
+    restartBtn.addEventListener("click", startGame);
+
+    updatePlayerPosition();
+    updateHUD();
+  </script>
+</body>
+</html>
